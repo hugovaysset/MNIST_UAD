@@ -104,8 +104,8 @@ def plot_anomalies(ref, pred, anomalies, anomalies_pred, show_idx=0, threshold=0
     :param anomalies: image containing the anomaly
     :param anomalies_pred: prediction of the model on anomalies
     :param show_idx: index of the image to choose in the test set
-    :param threshold: threshold for the contour of the predicted anomalies
-    :param ref_tensor: if the model takes as input a rank-3 tensor, adds a dimension to the image
+    :param threshold: threshold for the contour of the predicted  anomalies
+    :param ref_tensor: if the model takes as input a rank-3 tensor, removes the width dim before plot
     :return:
     """
     fig, axis = plt.subplots(2, 2, figsize=(8, 8), sharex="all", sharey="all")
