@@ -5,6 +5,8 @@ This little project contains the first studies on autoencoders applyed to anomal
 # Directory
 
 * The notebook ```MNIST_UAD.ipynb``` contains the main study.
+* The notebook ```AE_MNIST_UAD.ipynb``` contains the autoencoder part.
+* The notebook ```VAE_MNIST_UAD.ipynb``` contains the variational autoencoder part.
 * The ```MNIST_anomalies``` module contains all the utility functions to generate and plot the anomalies
 generated on the images.
 * The ```CVAE.py``` module contains two classes that build the convolutional variational autoencoder used
