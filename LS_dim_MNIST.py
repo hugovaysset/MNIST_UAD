@@ -2,7 +2,7 @@
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Model, layers
+from tensorflow.keras import Model, layers, Input
 
 original_dim = 784
 intermediate_dim = 64
@@ -22,18 +22,85 @@ class Sampling(layers.Layer):
     def call(self, inputs):
         z_mean, z_log_var = inputs
         batch = tf.shape(z_mean)[0]
-        dim1, dim2, dim3 = tf.shape(z_mean)[1]
+        dim1,dim2, dim3 = tf.shape(z_mean)[1], tf.shape(z_mean)[2], tf.shape(z_mean)[3]
         epsilon = tf.keras.backend.random_normal(shape=(batch, dim1, dim2, dim3))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 
 class VAE(Model):
-    def __init__(self, encoder, decoder, dims=(28, 28, 1), latent_dim=2, **kwargs):
-        super(VAE, self).__init__(**kwargs)
-        self.dims = dims
+
+    def __init__(self, latent_dim):
+        super(VAE, self).__init__()
         self.latent_dim = latent_dim
-        self.encoder = encoder
-        self.decoder = decoder
+        
+        original_dim = 784
+        intermediate_dim = 64
+        k_size = 3
+        dropout = 0.2
+        batchnorm = False
+        n_filters = 16
+        latent_side = 4
+
+        # Define encoder model.
+        encoder_inputs = Input(shape=(28, 28, 1), name="encoder_inputs")
+
+        paddings = tf.constant([[0, 0], [2, 2], [2, 2], [0, 0]]) # shape d x 2 where d is the rank of the tensor and 2 represents "before" and "after"
+        x = tf.pad(encoder_inputs, paddings, name="pad")
+
+        # contracting path
+        x = self.conv2d_block(x, n_filters * 1, kernel_size=k_size, batchnorm=batchnorm)
+        x = layers.MaxPooling2D((2, 2))(x)
+        x = layers.Dropout(dropout)(x)
+
+        x = self.conv2d_block(x, n_filters * 2, kernel_size=k_size, batchnorm=batchnorm)
+        x = layers.MaxPooling2D((2, 2))(x)
+        x = layers.Dropout(dropout)(x)
+
+        x = self.conv2d_block(x, n_filters=n_filters * 4, kernel_size=k_size, batchnorm=batchnorm)
+        x = layers.MaxPooling2D((2, 2))(x)
+        x = layers.Dropout(dropout)(x)
+
+        z_mean = layers.Conv2D(self.latent_dim, 1, strides=1, name="z_mean")(x)
+        z_log_var = layers.Conv2D(self.latent_dim, 1, strides=1, name="z_log_var")(x)
+        z = Sampling()((z_mean, z_log_var))
+
+        self.encoder = Model(encoder_inputs, [z_mean, z_log_var, z], name="encoder")
+
+        # Define decoder model.
+        latent_inputs = Input(shape=(latent_side, latent_side, self.latent_dim), name="z_sampling")
+
+        x = layers.Conv2DTranspose(n_filters * 4, (k_size, k_size), strides=(2, 2), padding='same', name="u6")(latent_inputs)
+        x = layers.Dropout(dropout)(x)
+        x = self.conv2d_block(x, n_filters * 4, kernel_size=k_size, batchnorm=batchnorm)
+
+        x = layers.Conv2DTranspose(n_filters * 2, (k_size, k_size), strides=(2, 2), padding='same', name="u7")(x)
+        x = layers.Dropout(dropout)(x)
+        x = self.conv2d_block(x, n_filters * 2, kernel_size=k_size, batchnorm=batchnorm)
+
+        x = layers.Conv2DTranspose(n_filters * 1, (k_size, k_size), strides=(2, 2), padding='same', name="u8")(x)
+        x = layers.Dropout(dropout)(x)
+        decoder_outputs = self.conv2d_block(x, 1, kernel_size=k_size, batchnorm=batchnorm)
+        crop = tf.image.resize_with_crop_or_pad(decoder_outputs, 28, 28)
+
+        self.decoder = Model(inputs=latent_inputs, outputs=crop, name="decoder")
+
+    def conv2d_block(self, input_tensor, n_filters, kernel_size=3, batchnorm=True):
+        """Function to add 2 convolutional layers with the parameters passed to it"""
+        # first layer
+        c1 = layers.Conv2D(filters=n_filters, kernel_size=kernel_size,\
+                  kernel_initializer='he_normal', padding='same')(input_tensor)
+        if batchnorm:
+            c1 = layers.BatchNormalization()(c1)
+        c1 = layers.Activation('sigmoid')(c1)
+
+        # second layer
+        c1 = layers.Conv2D(filters=n_filters, kernel_size=kernel_size,\
+                  kernel_initializer='he_normal', padding='same')(input_tensor)
+        if batchnorm:
+            c1 = layers.BatchNormalization()(c1)
+        c1 = layers.Activation('sigmoid')(c1)
+
+        return c1
 
     def train_step(self, data):
         if isinstance(data, tuple):
@@ -68,15 +135,15 @@ class VAE(Model):
         :return:
         """
         latent_sample = np.array([tf.random.normal((n, self.latent_dim), mean=0.0, stddev=1.0)])
-        latent_sample = np.array(tf.reshape(latent_sample, (n, self.latent_dim)))
+        latent_sample = np.array(tf.reshape(latent_sample, (n, *self.latent_dim)))
         generated = self.decoder.predict(latent_sample)
         return np.squeeze(generated, axis=-1)
+
 
 
 if __name__ == '__main__':
     original_dim = 784
     latent_dim = 2
-    latent_side = int(np.sqrt(latent_dim))
     kernel_size = 3
     dropout = 0
     batchnorm = False
@@ -109,6 +176,3 @@ if __name__ == '__main__':
     pred = vae.generate_sample(4)
 
     print(pred.shape)
-
-
-
