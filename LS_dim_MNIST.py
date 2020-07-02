@@ -4,17 +4,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, layers, Input
 
-original_dim = 784
-intermediate_dim = 64
-latent_dim = 16
-latent_side = int(np.sqrt(latent_dim))
-kernel_size = 3
-dropout = 0
-batchnorm = False
-n_filters = 4
-
-
-# NE PAS UTILISER keras MAIS tf.keras
 
 class Sampling(layers.Layer):
     """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
@@ -32,7 +21,7 @@ class VAE(Model):
     def __init__(self, latent_dim):
         super(VAE, self).__init__()
         self.latent_dim = latent_dim
-        
+
         original_dim = 784
         intermediate_dim = 64
         k_size = 3
@@ -41,7 +30,7 @@ class VAE(Model):
         n_filters = 16
         latent_side = 4
 
-        # Define encoder model.
+
         encoder_inputs = Input(shape=(28, 28, 1), name="encoder_inputs")
 
         paddings = tf.constant([[0, 0], [2, 2], [2, 2], [0, 0]]) # shape d x 2 where d is the rank of the tensor and 2 represents "before" and "after"
@@ -60,14 +49,14 @@ class VAE(Model):
         x = layers.MaxPooling2D((2, 2))(x)
         x = layers.Dropout(dropout)(x)
 
-        z_mean = layers.Conv2D(self.latent_dim, 1, strides=1, name="z_mean")(x)
-        z_log_var = layers.Conv2D(self.latent_dim, 1, strides=1, name="z_log_var")(x)
+        z_mean = layers.Conv2D(latent_dim, 1, strides=1, name="z_mean")(x)
+        z_log_var = layers.Conv2D(latent_dim, 1, strides=1, name="z_log_var")(x)
         z = Sampling()((z_mean, z_log_var))
 
         self.encoder = Model(encoder_inputs, [z_mean, z_log_var, z], name="encoder")
 
         # Define decoder model.
-        latent_inputs = Input(shape=(latent_side, latent_side, self.latent_dim), name="z_sampling")
+        latent_inputs = Input(shape=(latent_side, latent_side, latent_dim), name="z_sampling")
 
         x = layers.Conv2DTranspose(n_filters * 4, (k_size, k_size), strides=(2, 2), padding='same', name="u6")(latent_inputs)
         x = layers.Dropout(dropout)(x)
@@ -83,6 +72,7 @@ class VAE(Model):
         crop = tf.image.resize_with_crop_or_pad(decoder_outputs, 28, 28)
 
         self.decoder = Model(inputs=latent_inputs, outputs=crop, name="decoder")
+
 
     def conv2d_block(self, input_tensor, n_filters, kernel_size=3, batchnorm=True):
         """Function to add 2 convolutional layers with the parameters passed to it"""
@@ -101,6 +91,7 @@ class VAE(Model):
         c1 = layers.Activation('sigmoid')(c1)
 
         return c1
+        
 
     def train_step(self, data):
         if isinstance(data, tuple):
@@ -139,40 +130,3 @@ class VAE(Model):
         generated = self.decoder.predict(latent_sample)
         return np.squeeze(generated, axis=-1)
 
-
-
-if __name__ == '__main__':
-    original_dim = 784
-    latent_dim = 2
-    kernel_size = 3
-    dropout = 0
-    batchnorm = False
-    n_filters = 4
-
-    encoder_inputs = tf.keras.Input(shape=(28, 28, 1))
-    x = layers.Conv2D(32, 3, input_shape=(28, 28, 1), activation="relu", strides=2, padding="same")(encoder_inputs)
-    x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(x)
-    x = layers.Flatten()(x)
-    x = layers.Dense(32, activation="relu")(x)
-    z_mean = layers.Dense(latent_dim, name="z_mean")(x)
-    z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
-    z = Sampling()([z_mean, z_log_var])
-    encoder = Model(encoder_inputs, [z_mean, z_log_var, z], name="encoder")
-
-    # encoder.summary()
-
-    latent_inputs = tf.keras.Input(shape=(latent_dim,))
-    x = layers.Dense(7 * 7 * 64, activation="relu")(latent_inputs)
-    x = layers.Reshape((7, 7, 64))(x)
-    x = layers.Conv2DTranspose(64, 3, activation="relu", strides=2, padding="same")(x)
-    x = layers.Conv2DTranspose(32, 3, activation="relu", strides=2, padding="same")(x)
-    decoder_outputs = layers.Conv2DTranspose(1, 3, activation="sigmoid", padding="same")(x)
-    decoder = Model(latent_inputs, decoder_outputs, name="decoder")
-
-    vae = VAE(encoder, decoder, dims=(28, 28, 1), latent_dim=2)
-
-    vae.compile(optimizer=tf.keras.optimizers.Adam())
-
-    pred = vae.generate_sample(4)
-
-    print(pred.shape)
