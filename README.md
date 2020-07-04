@@ -4,13 +4,12 @@ This little project contains the first studies on autoencoders applyed to anomal
 
 # Directory
 
-* The notebook ```MNIST_UAD.ipynb``` contains the main study.
-* The notebook ```AE_MNIST_UAD.ipynb``` contains the autoencoder part.
-* The notebook ```VAE_MNIST_UAD.ipynb``` contains the variational autoencoder part.
-* The ```MNIST_anomalies``` module contains all the utility functions to generate and plot the anomalies
-generated on the images.
-* The ```CVAE.py``` module contains two classes that build the convolutional variational autoencoder used
-in the last part of the study.
+* The directory ```first_studies``` contains the examples of autoencoders and variational autoencoders applied
+to anomaly detection on MNIST digits
+* The directory ```ls_dimension``` contains a small study on the impact of the latent space dimension on the 
+performance of the VAE
+* The directory ```ls_prior``` contains a study on the impact of choosing a gaussian mixture as a prior distrib
+instead of a simple gaussian distribution (to be done).
 
 # Material and methods
 
