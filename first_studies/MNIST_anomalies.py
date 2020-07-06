@@ -138,15 +138,36 @@ def plot_anomalies(ref, pred, anomalies, anomalies_pred, show_idx=0, threshold=0
     contour_anomalies(axis[1][1], predicted_anomaly, legend="Predicted anomalies")
 
 
+def get_rm(im1, im2, rm_type="l2"):
+    """
+    rm_type: "l2" or "l1"
+    Returns: Residual map and mean loss between im1, im2
+    """
+    rm = np.array([])
+    if im1.shape == (28, 28, 1):
+        im1 = np.squeeze(im1, axis=-1)
+    if im2.shape == (28, 28, 1):
+        im2 = np.squeeze(im2, axis=-1)
+    if rm_type == "l2":
+        rm = (im1 - im2) ** 2
+    elif rm_type == "l1":
+        rm = np.abs(im1 - im2)
+    return rm, np.mean(rm)
+    
+
+
 def plot_predictions(model, inputs, n=5, dims=(28, 28, 1)):
-    plt.figure(figsize=(10, 4.5))
+    plt.figure(figsize=(25, 8))
     plt.viridis()
 
     predictions = model.predict(inputs[:n].reshape((n, *dims)))
 
+    if dims == (28, 28, 1):
+        inputs = np.squeeze(inputs, axis=-1)
+
     for i in range(n):
         # plot original image
-        ax = plt.subplot(2, n, i + 1)
+        ax = plt.subplot(3, n, i + 1)
         plt.imshow(inputs[i].reshape((28, 28)))
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -154,11 +175,19 @@ def plot_predictions(model, inputs, n=5, dims=(28, 28, 1)):
             ax.set_title('Original Images')
 
         # plot reconstruction
-        ax = plt.subplot(2, n, i + 1 + n)
+        ax = plt.subplot(3, n, i + 1 + n)
         plt.imshow(predictions[i].reshape((28, 28)))
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         if i == n // 2:
             ax.set_title('Reconstructed Images')
+
+        # plot residual maps
+        ax = plt.subplot(3, n, i + 1 + 2 * n)
+        plt.imshow(get_rm(inputs[i], predictions[i], rm_type="l1")[0].reshape((28, 28)))
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        if i == n // 2:
+            ax.set_title('Residual Maps')
     plt.show()
 
