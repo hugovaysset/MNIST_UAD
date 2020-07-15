@@ -3,3 +3,4 @@ __pycache__
 *.PNG
 *.npy
 *.pb
+/saved_models

@@ -1,0 +1,75 @@
+Objectif pour le futur proche/ Secteurs:
+
+OBJECTIF: Comparer les différents modèles pour la détection non supervisée d'anomalie à partir d'images.
+- VAE classique : L2+KL
+- OC-VAE: L2+distance au centre latent
+- VAE: L2+KL pour l'entrainement puis prédictions avec l'encodeur + règle de décision. Cette règle
+de décision pourrait être donnée par un algo de ML (SVD) mais l'entrainement ne sera pas naturel
+- OC-NN: distance au centre latent + régularisation des poids
+Important pour le OC-VAE: la perte devra être pondérée: le choix de cet hyperparamètre est délicat. Ou bien entrainer
+plusieur modèles en parallèle, ou bien entrainer un modèle suivant la publi de Google "you only train once" qui permet
+ensuite d'ajuster le compromis comme on veut.
+
+DIAGNOSTIC --> Avoir une métrique pertinente pour comparer tous les modèles quant à notre problème
+- ROC-AUC / ou distance au centre -> OK 
+- OCNN: Mesurer la densité : distribution des distances de chaque point au centre. Quelle distance? Prendre la l2 et on verra...
+- Ré-organiser le module ? OK
+- Visualisation: implémenter ACP (et t-SNE sur tensorboard?) Qu'apporte la visualisation? OK
+- Faire une fonction d'évaluation AUC sur les dix classes : OK
+- Faire un callback de calcul de la précision et un plot loss/précision pour diagnostiquer le
+surapprentissage
+
+ARCHITECTURE --> Avoir un modèle le plus optimisé possible sur ce jeu de données
+- Auto-attention : OK -> discuter avec Jean pour voir si j'ai fait la chose correctement (en particulier la concaténation)
+- Contraction en plus : OK
+- fonctions d'activation : OK
+- OCNN:  Tenter le OC-NN avec la perte: distance au centre dans l'espace latent + régularisation... On devrait retrouver ce qu'a fait Ruff
+- Tester aussi des modèles hybrides: entraîner un VAE puis utiliser les sorties de 
+l'encodeur comme entrée d'un algo ML classique (XGBoost ou RandomForest) ou d'un
+réseau de neurones de classification (Dense)
+
+LOSS --> Avoir une loss pertinente pour le problème de la détection d'outliers
+- prendre la distance au centre du vecteur latent / au lieu de la l2 pour repérer l'anomalie : score = distance dans l'espace latent
+- test le param de combinaison convexe.
+- Equilibrer la valeur ou le gradient des pertes.
+- Updater le centre après chaque époque : callback. Le centre est mis dans un tf.variable (tenseur qu'on peut modifier) -> callback 
+on epoch end : calculer le barycentre des mu -> OK (à tester)
+
+DATASET --> Se diriger progressivement vers les données expérimentales
+- Travailler sur CIFAR ? Permet de se comparer aux publis les plus récentes. 
+- Travailler sur le dataset expérimental -> 
+- Augmentation de données: les petites anomalies ne seront peut-être pas intégrées à la reconstruction. Donner l'image normale en y lors de 
+l'entrainement. MNIST corrupted est déjà pré-augmenté.
+
+BIBLIO: --> Continuer de se tenir à jour, explorer des pistes...
+- Comparer mon score à Ruff : OK
+- Regarder les nouvelles publis avec les rotations
+- Mettre au point un workflow efficace : https://kimberlyhirsh.micro.blog/2018/06/29/a-starttofinish-literature.html et toutes les recherches
+google "litterature review workflow"
+- Toujours retourner vers la biblio: tout le temps y retourner pour avoir des idées, on comprend mieux, etc.
+
+
+AUTRE:
+- Mettre en place le workflow github/drive/colab
+MODULE
+Arriver à faire un module correctement installable
+
+Idée de la dernière publi : prédire les rotations pour pousser le réseau au haut-niveau. Trop simple? Absorber les idées et essayer de les
+combiner.
+
+On pourrait très bien entrainer le réseau encodeur-décodeur mais au moment de prédire juste encodeur + distance dans l'espace latent: D'après le t-SNE
+ça ne devrait pas marcher car tous les clusters sont assez proches du centre (mais encore les distances ne sont pas trop interprétables) mais surtout
+il n'y a pas d'un côté les 0 et de l'autre les autres chiffres. Dès lors c'est difficile d'imaginer que ça marcherait. De même en calculant les normes de
+chaque vecteur z_mean dans l'espace latent : la distribution des 0 et des autres est la même... Donc ça ne marchera pas
+
+
+Latent dim:
+- 3 axes : x, y, channels : ne pas le mélanger! 4x4 = 16 superpixels : le centre doit être au centre de ces 16 superpixels
+- Mesurer : calculer les moments. Plus simple que t-SNE 
+- Pondérer les pertes ? Quand on les somme, parfois il faut les équilibrer. En toute logique c'est par rapport au gradient! 
+Récupérer le gradient associé à la dernière couche, afficher les normes. 
+
+Score: 
+- On fait varier le seuil de la métrique de (très sensible, peu spé) à (peu sensible, très spécifique). -> OK
+- Direct avec Keras: les afficher durant l'entraînement avec le jeu de validation. -> OK
+- Ruff: bien comparer pour voir par rapport à l'état de l'art 2018 -> OK
