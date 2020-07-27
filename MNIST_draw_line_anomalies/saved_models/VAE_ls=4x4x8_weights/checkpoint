@@ -1,2 +1,0 @@
-model_checkpoint_path: "VAE_ls=4x4x8_weights"
-all_model_checkpoint_paths: "VAE_ls=4x4x8_weights"
